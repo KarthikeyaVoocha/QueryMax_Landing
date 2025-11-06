@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { Trophy, Users, Copy, Check, LogOut, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
+export const dynamic = 'force-dynamic'
+
 export default function Dashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
