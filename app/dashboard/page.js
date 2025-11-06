@@ -23,17 +23,27 @@ export default function Dashboard() {
   }, [])
 
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    
-    if (!session) {
-      router.push('/login')
-      return
-    }
+    try {
+      if (!supabase) {
+        router.push('/login')
+        return
+      }
 
-    setUser(session.user)
-    await fetchUserData(session.user.id)
-    await fetchLeaderboard()
-    setLoading(false)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        router.push('/login')
+        return
+      }
+
+      setUser(session.user)
+      await fetchUserData(session.user.id)
+      await fetchLeaderboard()
+      setLoading(false)
+    } catch (error) {
+      console.error('Auth check error:', error)
+      router.push('/login')
+    }
   }
 
   const fetchUserData = async (userId) => {
