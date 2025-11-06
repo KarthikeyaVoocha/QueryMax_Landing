@@ -1,28 +1,50 @@
 import { NextResponse } from 'next/server'
-import { supabase, generateReferralCode, calculateRank } from '../../../lib/supabase.js'
+import { createClient } from '@supabase/supabase-js'
 
-// POST /api/signup - Create new user with referral code
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+)
+
+// Generate unique referral code
+function generateReferralCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  let code = ''
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return code
+}
+
+// Calculate rank based on signup position and referrals
+function calculateRank(signupPosition, referralCount) {
+  const baseRank = 100 + signupPosition
+  const rankReduction = referralCount * 50
+  return Math.max(1, baseRank - rankReduction)
+}
+
+// POST /api/create-profile - Create user profile after signup
 export async function POST(request) {
   try {
     const { pathname } = new URL(request.url)
     const body = await request.json()
 
-    if (pathname === '/api/signup') {
-      const { email, name, referredByCode } = body
+    if (pathname === '/api/create-profile') {
+      const { userId, email, name, referredByCode } = body
 
-      if (!email || !name) {
-        return NextResponse.json({ error: 'Email and name are required' }, { status: 400 })
+      if (!userId || !email || !name) {
+        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
       }
 
-      // Check if email already exists
-      const { data: existingUser } = await supabase
+      // Check if profile already exists
+      const { data: existingProfile } = await supabase
         .from('users')
         .select('*')
-        .eq('email', email)
+        .eq('id', userId)
         .single()
 
-      if (existingUser) {
-        return NextResponse.json({ error: 'Email already registered' }, { status: 400 })
+      if (existingProfile) {
+        return NextResponse.json({ user: existingProfile })
       }
 
       // Get current user count for rank calculation
@@ -53,9 +75,7 @@ export async function POST(request) {
       // Calculate initial rank
       const rank = calculateRank(signupPosition, 0)
 
-      // Create user
-      const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      
+      // Create user profile
       const { data: newUser, error: insertError } = await supabase
         .from('users')
         .insert([{
@@ -71,8 +91,8 @@ export async function POST(request) {
         .single()
 
       if (insertError) {
-        console.error('Error creating user:', insertError)
-        return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
+        console.error('Error creating user profile:', insertError)
+        return NextResponse.json({ error: 'Failed to create profile' }, { status: 500 })
       }
 
       // If user was referred, update referrer's count and rank
@@ -104,11 +124,7 @@ export async function POST(request) {
         }
       }
 
-      return NextResponse.json({ 
-        success: true, 
-        user: newUser,
-        referralLink: `${process.env.NEXT_PUBLIC_BASE_URL}?ref=${referralCode}`
-      })
+      return NextResponse.json({ success: true, user: newUser })
     }
 
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -120,7 +136,7 @@ export async function POST(request) {
 
 // GET /api/stats - Get total user count
 // GET /api/leaderboard - Get top users by rank
-// GET /api/user?email=xxx - Get user details
+// GET /api/user?id=xxx - Get user details by ID
 export async function GET(request) {
   try {
     const { pathname, searchParams } = new URL(request.url)
@@ -138,7 +154,7 @@ export async function GET(request) {
         .from('users')
         .select('name, email, referralCode, referralCount, rank')
         .order('rank', { ascending: true })
-        .limit(50)
+        .limit(100)
 
       if (error) {
         console.error('Error fetching leaderboard:', error)
@@ -149,16 +165,16 @@ export async function GET(request) {
     }
 
     if (pathname === '/api/user') {
-      const email = searchParams.get('email')
+      const userId = searchParams.get('id')
       
-      if (!email) {
-        return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+      if (!userId) {
+        return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
       }
 
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('email', email)
+        .eq('id', userId)
         .single()
 
       if (error || !data) {
