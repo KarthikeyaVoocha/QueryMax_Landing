@@ -21,10 +21,20 @@ export default function LandingPage() {
   }, [])
 
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session) {
-      router.push('/dashboard')
-    } else {
+    try {
+      if (!supabase) {
+        setLoading(false)
+        return
+      }
+      
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.push('/dashboard')
+      } else {
+        setLoading(false)
+      }
+    } catch (error) {
+      console.error('Auth check error:', error)
       setLoading(false)
     }
   }
@@ -36,6 +46,7 @@ export default function LandingPage() {
       setTotalUsers(Math.max(100, data.totalUsers))
     } catch (error) {
       console.error('Error fetching stats:', error)
+      setTotalUsers(100)
     }
   }
 
