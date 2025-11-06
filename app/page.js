@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Database, Zap, Shield, Lock, Trophy, Users, ArrowRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
+export const dynamic = 'force-dynamic'
+
 export default function LandingPage() {
   const router = useRouter()
   const [totalUsers, setTotalUsers] = useState(100)
