@@ -326,6 +326,41 @@ export default function QueryMaxLanding() {
           })}
         </div>
 
+        {/* Referral Boost Info Banner */}
+        <div className="max-w-4xl mx-auto mb-12">
+          <div className="p-8 rounded-3xl bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10 border-2 border-blue-500/30 backdrop-blur-sm">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Users className="w-8 h-8 text-blue-400" />
+              <h3 className="text-3xl font-bold text-white">How It Works</h3>
+            </div>
+            <div className="grid md:grid-cols-3 gap-6 mt-6">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-2xl font-bold">
+                  1
+                </div>
+                <h4 className="text-lg font-semibold text-white mb-2">Sign Up</h4>
+                <p className="text-slate-400 text-sm">Get your unique referral link instantly</p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-2xl font-bold">
+                  2
+                </div>
+                <h4 className="text-lg font-semibold text-white mb-2">Share & Climb</h4>
+                <p className="text-slate-400 text-sm">
+                  <span className="text-yellow-300 font-semibold">Each friend = +50 ranks! 🚀</span>
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 flex items-center justify-center">
+                  <Trophy className="w-8 h-8" />
+                </div>
+                <h4 className="text-lg font-semibold text-white mb-2">Win Rewards</h4>
+                <p className="text-slate-400 text-sm">Top 500 get 1 year FREE!</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Signup Section */}
         <div className="max-w-xl mx-auto">
           <Card className="bg-slate-900/50 border-slate-800 backdrop-blur-sm">
