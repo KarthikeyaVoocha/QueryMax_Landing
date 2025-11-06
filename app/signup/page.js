@@ -33,6 +33,10 @@ function SignupForm() {
     setError('')
 
     try {
+      if (!supabase) {
+        throw new Error('Service temporarily unavailable')
+      }
+
       // Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
