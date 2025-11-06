@@ -39,6 +39,8 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
       }
 
+      const supabase = getSupabaseClient()
+
       // Check if profile already exists
       const { data: existingProfile } = await supabase
         .from('users')
