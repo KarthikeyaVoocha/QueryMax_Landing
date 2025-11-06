@@ -147,6 +147,20 @@ export default function QueryMaxLanding() {
               <p className="text-xl text-slate-300">You're all set, {userData.name}!</p>
             </div>
 
+            {/* Referral Boost Banner */}
+            <div className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 border border-blue-500/30 backdrop-blur-sm">
+              <div className="flex items-center justify-center gap-3 mb-2">
+                <Trophy className="w-6 h-6 text-yellow-400" />
+                <h3 className="text-2xl font-bold text-white">Climb the Ranks!</h3>
+                <Trophy className="w-6 h-6 text-yellow-400" />
+              </div>
+              <p className="text-center text-lg text-blue-200">
+                <span className="font-semibold text-yellow-300">Each referral moves you up 50 ranks!</span> 
+                <br />
+                <span className="text-slate-300">Share your link below to unlock better rewards 🚀</span>
+              </p>
+            </div>
+
             {/* User Stats Cards */}
             <div className="grid md:grid-cols-2 gap-6 mb-12">
               <Card className="bg-slate-900/50 border-slate-800 backdrop-blur-sm">
@@ -161,7 +175,13 @@ export default function QueryMaxLanding() {
                     #{userData.rank}
                   </div>
                   <p className="text-slate-400 mt-2">Referrals: {userData.referralCount}</p>
-                  <p className="text-sm text-slate-500 mt-1">Each referral moves you up 50 ranks!</p>
+                  <p className="text-sm text-slate-500 mt-1">
+                    {userData.rank <= 500 ? '🎉 You qualify for 1 year free!' : 
+                     userData.rank <= 1000 ? '🎉 You qualify for 75% off!' :
+                     userData.rank <= 2000 ? '🎉 You qualify for 50% off!' :
+                     userData.rank <= 5000 ? '🎉 You qualify for 25% off!' :
+                     `Refer ${Math.ceil((userData.rank - 500) / 50)} more to get 1 year free!`}
+                  </p>
                 </CardContent>
               </Card>
 
