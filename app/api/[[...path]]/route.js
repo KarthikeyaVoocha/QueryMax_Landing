@@ -1,104 +1,176 @@
-import { MongoClient } from 'mongodb'
-import { v4 as uuidv4 } from 'uuid'
 import { NextResponse } from 'next/server'
+import { supabase, generateReferralCode, calculateRank } from '../../../lib/supabase.js'
 
-// MongoDB connection
-let client
-let db
-
-async function connectToMongo() {
-  if (!client) {
-    client = new MongoClient(process.env.MONGO_URL)
-    await client.connect()
-    db = client.db(process.env.DB_NAME)
-  }
-  return db
-}
-
-// Helper function to handle CORS
-function handleCORS(response) {
-  response.headers.set('Access-Control-Allow-Origin', process.env.CORS_ORIGINS || '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  response.headers.set('Access-Control-Allow-Credentials', 'true')
-  return response
-}
-
-// OPTIONS handler for CORS
-export async function OPTIONS() {
-  return handleCORS(new NextResponse(null, { status: 200 }))
-}
-
-// Route handler function
-async function handleRoute(request, { params }) {
-  const { path = [] } = params
-  const route = `/${path.join('/')}`
-  const method = request.method
-
+// POST /api/signup - Create new user with referral code
+export async function POST(request) {
   try {
-    const db = await connectToMongo()
+    const { pathname } = new URL(request.url)
+    const body = await request.json()
 
-    // Root endpoint - GET /api/root (since /api/ is not accessible with catch-all)
-    if (route === '/root' && method === 'GET') {
-      return handleCORS(NextResponse.json({ message: "Hello World" }))
-    }
-    // Root endpoint - GET /api/root (since /api/ is not accessible with catch-all)
-    if (route === '/' && method === 'GET') {
-      return handleCORS(NextResponse.json({ message: "Hello World" }))
-    }
+    if (pathname === '/api/signup') {
+      const { email, name, referredByCode } = body
 
-    // Status endpoints - POST /api/status
-    if (route === '/status' && method === 'POST') {
-      const body = await request.json()
-      
-      if (!body.client_name) {
-        return handleCORS(NextResponse.json(
-          { error: "client_name is required" }, 
-          { status: 400 }
-        ))
+      if (!email || !name) {
+        return NextResponse.json({ error: 'Email and name are required' }, { status: 400 })
       }
 
-      const statusObj = {
-        id: uuidv4(),
-        client_name: body.client_name,
-        timestamp: new Date()
+      // Check if email already exists
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single()
+
+      if (existingUser) {
+        return NextResponse.json({ error: 'Email already registered' }, { status: 400 })
       }
 
-      await db.collection('status_checks').insertOne(statusObj)
-      return handleCORS(NextResponse.json(statusObj))
-    }
+      // Get current user count for rank calculation
+      const { count } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
 
-    // Status endpoints - GET /api/status
-    if (route === '/status' && method === 'GET') {
-      const statusChecks = await db.collection('status_checks')
-        .find({})
-        .limit(1000)
-        .toArray()
+      const signupPosition = count || 0
 
-      // Remove MongoDB's _id field from response
-      const cleanedStatusChecks = statusChecks.map(({ _id, ...rest }) => rest)
+      // Generate unique referral code
+      let referralCode = generateReferralCode()
+      let isUnique = false
       
-      return handleCORS(NextResponse.json(cleanedStatusChecks))
+      while (!isUnique) {
+        const { data } = await supabase
+          .from('users')
+          .select('referralCode')
+          .eq('referralCode', referralCode)
+          .single()
+        
+        if (!data) {
+          isUnique = true
+        } else {
+          referralCode = generateReferralCode()
+        }
+      }
+
+      // Calculate initial rank
+      const rank = calculateRank(signupPosition, 0)
+
+      // Create user
+      const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
+      const { data: newUser, error: insertError } = await supabase
+        .from('users')
+        .insert([{
+          id: userId,
+          email,
+          name,
+          referralCode,
+          referredByCode: referredByCode || null,
+          referralCount: 0,
+          rank
+        }])
+        .select()
+        .single()
+
+      if (insertError) {
+        console.error('Error creating user:', insertError)
+        return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
+      }
+
+      // If user was referred, update referrer's count and rank
+      if (referredByCode) {
+        const { data: referrer } = await supabase
+          .from('users')
+          .select('*')
+          .eq('referralCode', referredByCode)
+          .single()
+
+        if (referrer) {
+          const newReferralCount = (referrer.referralCount || 0) + 1
+          
+          // Get referrer's signup position
+          const { count: referrerPosition } = await supabase
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+            .lt('createdAt', referrer.createdAt)
+          
+          const newRank = calculateRank(referrerPosition || 0, newReferralCount)
+          
+          await supabase
+            .from('users')
+            .update({ 
+              referralCount: newReferralCount,
+              rank: newRank
+            })
+            .eq('id', referrer.id)
+        }
+      }
+
+      return NextResponse.json({ 
+        success: true, 
+        user: newUser,
+        referralLink: `${process.env.NEXT_PUBLIC_BASE_URL}?ref=${referralCode}`
+      })
     }
 
-    // Route not found
-    return handleCORS(NextResponse.json(
-      { error: `Route ${route} not found` }, 
-      { status: 404 }
-    ))
-
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   } catch (error) {
     console.error('API Error:', error)
-    return handleCORS(NextResponse.json(
-      { error: "Internal server error" }, 
-      { status: 500 }
-    ))
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
-// Export all HTTP methods
-export const GET = handleRoute
-export const POST = handleRoute
-export const PUT = handleRoute
-export const DELETE = handleRoute
-export const PATCH = handleRoute
+// GET /api/stats - Get total user count
+// GET /api/leaderboard - Get top users by rank
+// GET /api/user?email=xxx - Get user details
+export async function GET(request) {
+  try {
+    const { pathname, searchParams } = new URL(request.url)
+
+    if (pathname === '/api/stats') {
+      const { count } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+
+      return NextResponse.json({ totalUsers: count || 0 })
+    }
+
+    if (pathname === '/api/leaderboard') {
+      const { data, error } = await supabase
+        .from('users')
+        .select('name, email, referralCode, referralCount, rank')
+        .order('rank', { ascending: true })
+        .limit(50)
+
+      if (error) {
+        console.error('Error fetching leaderboard:', error)
+        return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 })
+      }
+
+      return NextResponse.json({ leaderboard: data || [] })
+    }
+
+    if (pathname === '/api/user') {
+      const email = searchParams.get('email')
+      
+      if (!email) {
+        return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single()
+
+      if (error || !data) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+
+      return NextResponse.json({ user: data })
+    }
+
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  } catch (error) {
+    console.error('API Error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
