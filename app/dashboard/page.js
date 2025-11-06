@@ -77,8 +77,15 @@ export default function Dashboard() {
   }
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
+    try {
+      if (supabase) {
+        await supabase.auth.signOut()
+      }
+      router.push('/')
+    } catch (error) {
+      console.error('Sign out error:', error)
+      router.push('/')
+    }
   }
 
   const rewardTiers = [
