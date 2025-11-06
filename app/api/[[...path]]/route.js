@@ -145,6 +145,7 @@ export async function POST(request) {
 export async function GET(request) {
   try {
     const { pathname, searchParams } = new URL(request.url)
+    const supabase = getSupabaseClient()
 
     if (pathname === '/api/stats') {
       const { count } = await supabase
