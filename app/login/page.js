@@ -23,6 +23,10 @@ export default function LoginPage() {
     setError('')
 
     try {
+      if (!supabase) {
+        throw new Error('Service temporarily unavailable')
+      }
+
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password
