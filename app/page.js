@@ -125,10 +125,10 @@ export default function QueryMaxLanding() {
   ]
 
   const rewardTiers = [
-    { rank: 'Top 100', reward: '1 year free', color: 'from-yellow-400 to-orange-500' },
-    { rank: 'Top 500', reward: '75% off', color: 'from-purple-400 to-pink-500' },
-    { rank: 'Top 1000', reward: '50% off', color: 'from-blue-400 to-cyan-500' },
-    { rank: 'Top 2000', reward: '25% off', color: 'from-green-400 to-teal-500' }
+    { rank: 'Top 500', reward: '1 year free', color: 'from-yellow-400 to-orange-500' },
+    { rank: 'Top 1000', reward: '75% off', color: 'from-purple-400 to-pink-500' },
+    { rank: 'Top 2000', reward: '50% off', color: 'from-blue-400 to-cyan-500' },
+    { rank: 'Top 5000', reward: '25% off', color: 'from-green-400 to-teal-500' }
   ]
 
   if (signupSuccess && userData) {
